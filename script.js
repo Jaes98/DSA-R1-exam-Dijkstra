@@ -1,13 +1,23 @@
-const gridElement = document.getElementById("grid");
-const startButton = document.getElementById("startButton");
-const resetButton = document.getElementById("resetButton");
-const speedSlider = document.getElementById("speedSlider");
+window.addEventListener("load", start);
+
+let gridElement,
+  startButton,
+  resetButton,
+  speedSlider,
+  toggleButton,
+  speedValue,
+  cellCounter;
+let wallMode = false;
+let isMouseDown = false;
 
 const rows = 20;
 const cols = 20;
+
 let grid = [];
+
 let startNode = null;
 let goalNode = null;
+let visitedNodesCount = 0;
 
 function createGrid() {
   for (let row = 0; row < rows; row++) {
@@ -17,27 +27,33 @@ function createGrid() {
       cell.classList.add("cell");
       cell.dataset.row = row;
       cell.dataset.col = col;
-      cell.addEventListener("click", () => selectNode(cell));
+      cell.addEventListener("mousedown", () => handleMouseDown(cell));
+      cell.addEventListener("mousemove", () => handleMouseMove(cell));
+      cell.addEventListener("mouseup", handleMouseUp);
       gridElement.appendChild(cell);
       rowArray.push(cell);
     }
     grid.push(rowArray);
   }
-  addRandomWalls();
 }
 
-function addRandomWalls() {
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      if (Math.random() < 0.2) {
-        // 20% chance to be a wall
-        const cell = grid[row][col];
-        if (cell !== startNode && cell !== goalNode) {
-          cell.classList.add("wall");
-        }
-      }
-    }
+function handleMouseDown(cell) {
+  isMouseDown = true;
+  if (wallMode) {
+    cell.classList.toggle("wall");
+  } else {
+    selectNode(cell);
   }
+}
+
+function handleMouseMove(cell) {
+  if (isMouseDown && wallMode) {
+    cell.classList.add("wall");
+  }
+}
+
+function handleMouseUp() {
+  isMouseDown = false;
 }
 
 function selectNode(cell) {
@@ -59,7 +75,8 @@ function resetGrid() {
   );
   startNode = null;
   goalNode = null;
-  addRandomWalls();
+  visitedNodesCount = 0;
+  cellCounter.textContent = "0";
 }
 
 function sleep(ms) {
@@ -93,17 +110,25 @@ async function visualizeDijkstra() {
 
     if (visited.has(cell) || cell.classList.contains("wall")) continue;
     visited.add(cell);
+    visitedNodesCount++;
+    cellCounter.textContent = visitedNodesCount;
 
     if (cell !== startNode && cell !== goalNode) {
       cell.classList.add("visited");
       cell.textContent = distance;
-      await sleep(parseInt(speedSlider.value));
+      await sleep(1010 - parseInt(speedSlider.value)); // Invert the speed
     }
 
     if (row === goal.row && col === goal.col) {
       showPath(previous, goal);
+      cellCounter.textContent = distance;
       break;
     }
+
+    // Highlight the current node
+    cell.classList.add("current");
+    await sleep(1010 - parseInt(speedSlider.value)); // Invert the speed
+    cell.classList.remove("current");
 
     for (const { row: dRow, col: dCol } of directions) {
       const newRow = row + dRow;
@@ -129,6 +154,32 @@ function showPath(previous, goal) {
   }
 }
 
-createGrid();
-startButton.addEventListener("click", visualizeDijkstra);
-resetButton.addEventListener("click", resetGrid);
+function toggleWallMode() {
+  wallMode = !wallMode;
+  toggleButton.textContent = wallMode
+    ? "Toggle Start/Goal Mode"
+    : "Toggle Wall Mode";
+}
+
+function updateSpeedValue() {
+  speedValue.textContent = `${1010 - speedSlider.value} ms`; // Invert the speed
+}
+
+function start() {
+  gridElement = document.getElementById("grid");
+  startButton = document.getElementById("startButton");
+  resetButton = document.getElementById("resetButton");
+  speedSlider = document.getElementById("speedSlider");
+  toggleButton = document.getElementById("toggleButton");
+  speedValue = document.getElementById("speedValue");
+  cellCounter = document.getElementById("cellCounter");
+
+  createGrid();
+  startButton.addEventListener("click", visualizeDijkstra);
+  resetButton.addEventListener("click", resetGrid);
+  toggleButton.addEventListener("click", toggleWallMode);
+  speedSlider.addEventListener("input", updateSpeedValue);
+  updateSpeedValue(); // Initialize the speed value display
+
+  document.addEventListener("mouseup", handleMouseUp); // Ensure mouseup is detected globally
+}
