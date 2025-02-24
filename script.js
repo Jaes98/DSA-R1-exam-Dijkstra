@@ -1,3 +1,5 @@
+import MinHeap from "./MinHeap.js";
+
 window.addEventListener("load", start);
 
 let gridElement,

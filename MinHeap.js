@@ -69,3 +69,5 @@ class MinHeap {
     return this.heap.length === 0;
   }
 }
+
+export default MinHeap;
