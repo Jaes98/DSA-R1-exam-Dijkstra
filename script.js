@@ -1,5 +1,3 @@
-import MinHeap from "./MinHeap.js";
-
 window.addEventListener("load", start);
 
 let gridElement,
@@ -97,8 +95,7 @@ async function visualizeDijkstra() {
     col: parseInt(goalNode.dataset.col),
   };
   const visited = new Set();
-  const queue = new MinHeap();
-  queue.insert({ ...start, distance: 0 });
+  const queue = [{ ...start, distance: 0 }];
   const directions = [
     { row: -1, col: 0 },
     { row: 1, col: 0 },
@@ -107,8 +104,9 @@ async function visualizeDijkstra() {
   ];
   const previous = {};
 
-  while (!queue.isEmpty()) {
-    const { row, col, distance } = queue.extractMin();
+  while (queue.length > 0) {
+    queue.sort((a, b) => a.distance - b.distance);
+    const { row, col, distance } = queue.shift();
     const cell = grid[row][col];
 
     if (visited.has(cell) || cell.classList.contains("wall")) continue;
@@ -123,7 +121,7 @@ async function visualizeDijkstra() {
     }
 
     if (row === goal.row && col === goal.col) {
-      showPath(previous, goal);
+      showPath(previous, goal, distance);
       cellCounter.textContent = distance;
       break;
     }
@@ -135,22 +133,27 @@ async function visualizeDijkstra() {
         const newCell = grid[newRow][newCol];
         if (!visited.has(newCell) && !newCell.classList.contains("wall")) {
           const newDistance = distance + 1;
-          queue.insert({ row: newRow, col: newCol, distance: newDistance });
-          previous[`${newRow},${newCol}`] = { row, col };
+          queue.push({ row: newRow, col: newCol, distance: newDistance });
+          previous[`${newRow},${newCol}`] = { row, col, distance: newDistance };
         }
       }
     }
   }
 }
 
-function showPath(previous, goal) {
+function showPath(previous, goal, totalDistance) {
   let { row, col } = goal;
+  const path = [];
   while (previous[`${row},${col}`]) {
     const cell = grid[row][col];
-    cell.classList.add("path");
-    cell.textContent = "";
+    path.push(cell);
     ({ row, col } = previous[`${row},${col}`]);
   }
+  path.reverse();
+  path.forEach((cell, index) => {
+    cell.classList.add("path");
+    cell.textContent = index + 1;
+  });
 
   // Clear the numbers from non-path cells
   grid.forEach((row) =>
