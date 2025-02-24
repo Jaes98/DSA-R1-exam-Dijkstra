@@ -3,6 +3,32 @@ body {
     flex-direction: column;
     align-items: center;
     font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #121212;
+    color: #e0e0e0;
+}
+
+header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #1e1e1e;
+    padding: 10px;
+    width: 100%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+header h1 {
+    margin: 0;
+    padding: 10px 0;
+    color: #ffffff;
+}
+
+.controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 #grid {
@@ -10,44 +36,60 @@ body {
     grid-template-columns: repeat(20, 30px);
     grid-template-rows: repeat(20, 30px);
     gap: 1px;
+    margin-top: 20px;
 }
 
 .cell {
     width: 30px;
     height: 30px;
-    border: 1px solid #ccc;
+    border: 1px solid #333;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    background-color: #2e2e2e;
+    color: #e0e0e0;
+    text-shadow: 
+        -1px -1px 0 #000,  
+         1px -1px 0 #000,
+        -1px  1px 0 #000,
+         1px  1px 0 #000; /* Create a border effect */
 }
 
 .cell.start {
-    background-color: green;
+    background-color: #388e3c;
 }
 
 .cell.goal {
-    background-color: red;
+    background-color: #d32f2f;
 }
 
 .cell.visited {
-    background-color: lightblue;
+    background-color: #1976d2;
 }
 
 .cell.path {
-    background-color: yellow;
+    background-color: #fbc02d;
 }
 
 .cell.wall {
-    background-color: black;
+    background-color: #000000;
+    border: 1px solid #ffffff;
 }
 
 .cell.current {
-    background-color: orange;
+    background-color: #ff9800;
 }
 
 button {
-    margin: 10px;
     padding: 10px 20px;
     font-size: 16px;
+    background-color: #424242;
+    color: #e0e0e0;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #616161;
 }

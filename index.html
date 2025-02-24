@@ -7,14 +7,18 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Dijkstra Visualization</h1>
+    <header>
+        <h1>Dijkstra Visualization</h1>
+        <div class="controls">
+            <label for="speedSlider">Speed: <span id="speedValue">100 ms</span></label>
+            <input type="range" id="speedSlider" min="10" max="1000" value="910">
+            <button id="toggleButton">Toggle Wall Mode</button>
+            <button id="startButton">Start</button>
+            <button id="resetButton">Reset</button>
+            <div>Cells from start to goal: <span id="cellCounter">0</span></div>
+        </div>
+    </header>
     <div id="grid"></div>
-    <label for="speedSlider">Speed: <span id="speedValue">100 ms</span></label>
-    <input type="range" id="speedSlider" min="10" max="1000" value="100">
-    <button id="toggleButton">Toggle Wall Mode</button>
-    <button id="startButton">Start</button>
-    <button id="resetButton">Reset</button>
-    <div>Cells from start to goal: <span id="cellCounter">0</span></div>
     <script src="script.js"></script>
 </body>
 </html>
