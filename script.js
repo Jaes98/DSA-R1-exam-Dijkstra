@@ -1,3 +1,6 @@
+// Import the MinHeap class
+import MinHeap from "./MinHeap.js";
+
 window.addEventListener("load", start);
 
 let gridElement,
@@ -14,6 +17,7 @@ const rows = 20;
 const cols = 20;
 
 let grid = [];
+let graph = {}; // Graph representation
 
 let startNode = null;
 let goalNode = null;
@@ -34,6 +38,33 @@ function createGrid() {
       rowArray.push(cell);
     }
     grid.push(rowArray);
+  }
+  buildGraph(); // Create graph representation
+}
+
+// Build the graph representation from the grid
+function buildGraph() {
+  graph = {};
+  const directions = [
+    { row: -1, col: 0 }, // up
+    { row: 1, col: 0 }, // down
+    { row: 0, col: -1 }, // left
+    { row: 0, col: 1 }, // right
+  ];
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const nodeId = `${row},${col}`;
+      graph[nodeId] = [];
+
+      for (const { row: dRow, col: dCol } of directions) {
+        const newRow = row + dRow;
+        const newCol = col + dCol;
+        if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols) {
+          graph[nodeId].push(`${newRow},${newCol}`);
+        }
+      }
+    }
   }
 }
 
@@ -86,69 +117,94 @@ function sleep(ms) {
 async function visualizeDijkstra() {
   if (!startNode || !goalNode) return;
 
-  const start = {
+  const startCoord = {
     row: parseInt(startNode.dataset.row),
     col: parseInt(startNode.dataset.col),
   };
-  const goal = {
+  const goalCoord = {
     row: parseInt(goalNode.dataset.row),
     col: parseInt(goalNode.dataset.col),
   };
+
+  const startId = `${startCoord.row},${startCoord.col}`;
+  const goalId = `${goalCoord.row},${goalCoord.col}`;
+
   const visited = new Set();
-  const queue = [{ ...start, distance: 0 }];
-  const directions = [
-    { row: -1, col: 0 },
-    { row: 1, col: 0 },
-    { row: 0, col: -1 },
-    { row: 0, col: 1 },
-  ];
+  const priorityQueue = new MinHeap();
+  priorityQueue.insert({ nodeId: startId, distance: 0 });
+
+  const distances = {};
   const previous = {};
 
-  while (queue.length > 0) {
-    queue.sort((a, b) => a.distance - b.distance);
-    const { row, col, distance } = queue.shift();
+  // Initialize distances
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const nodeId = `${row},${col}`;
+      distances[nodeId] = Infinity;
+    }
+  }
+  distances[startId] = 0;
+
+  while (!priorityQueue.isEmpty()) {
+    const { nodeId, distance } = priorityQueue.extractMin();
+    const [row, col] = nodeId.split(",").map(Number);
     const cell = grid[row][col];
 
-    if (visited.has(cell) || cell.classList.contains("wall")) continue;
-    visited.add(cell);
+    if (nodeId === goalId) {
+      showPath(previous, goalId, distances[goalId]);
+      cellCounter.textContent = distances[goalId];
+      break;
+    }
+
+    if (visited.has(nodeId) || cell.classList.contains("wall")) continue;
+
+    // Add current class to highlight the node being processed
+    if (cell !== startNode && cell !== goalNode) {
+      cell.classList.add("current");
+      await sleep(1010 - parseInt(speedSlider.value) / 2); // Show current node highlight
+    }
+
+    visited.add(nodeId);
     visitedNodesCount++;
     cellCounter.textContent = visitedNodesCount;
 
     if (cell !== startNode && cell !== goalNode) {
+      cell.classList.remove("current"); // Remove current class
       cell.classList.add("visited");
       cell.textContent = distance;
       await sleep(1010 - parseInt(speedSlider.value)); // Invert the speed
     }
 
-    if (row === goal.row && col === goal.col) {
-      showPath(previous, goal, distance);
-      cellCounter.textContent = distance;
-      break;
-    }
+    for (const neighborId of graph[nodeId]) {
+      if (visited.has(neighborId)) continue;
 
-    for (const { row: dRow, col: dCol } of directions) {
-      const newRow = row + dRow;
-      const newCol = col + dCol;
-      if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols) {
-        const newCell = grid[newRow][newCol];
-        if (!visited.has(newCell) && !newCell.classList.contains("wall")) {
-          const newDistance = distance + 1;
-          queue.push({ row: newRow, col: newCol, distance: newDistance });
-          previous[`${newRow},${newCol}`] = { row, col, distance: newDistance };
-        }
+      const [neighborRow, neighborCol] = neighborId.split(",").map(Number);
+      const neighborCell = grid[neighborRow][neighborCol];
+
+      if (neighborCell.classList.contains("wall")) continue;
+
+      const newDistance = distance + 1; // Edge weight is 1
+
+      if (newDistance < distances[neighborId]) {
+        distances[neighborId] = newDistance;
+        previous[neighborId] = nodeId;
+        priorityQueue.insert({ nodeId: neighborId, distance: newDistance });
       }
     }
   }
 }
 
-function showPath(previous, goal, totalDistance) {
-  let { row, col } = goal;
+function showPath(previous, goalId, totalDistance) {
+  let currentId = goalId;
   const path = [];
-  while (previous[`${row},${col}`]) {
+
+  while (previous[currentId]) {
+    const [row, col] = currentId.split(",").map(Number);
     const cell = grid[row][col];
     path.push(cell);
-    ({ row, col } = previous[`${row},${col}`]);
+    currentId = previous[currentId];
   }
+
   path.reverse();
   path.forEach((cell, index) => {
     cell.classList.add("path");
