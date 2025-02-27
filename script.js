@@ -1,4 +1,3 @@
-// Import the MinHeap class
 import MinHeap from "./MinHeap.js";
 
 window.addEventListener("load", start);
@@ -17,7 +16,8 @@ const rows = 20;
 const cols = 20;
 
 let grid = [];
-let graph = {}; // Graph representation
+
+let graph = {}; // Adjacency list representation of the grid
 
 let startNode = null;
 let goalNode = null;
@@ -39,7 +39,7 @@ function createGrid() {
     }
     grid.push(rowArray);
   }
-  buildGraph(); // Create graph representation
+  buildGraph();
 }
 
 // Build the graph representation from the grid
@@ -52,6 +52,7 @@ function buildGraph() {
     { row: 0, col: 1 }, // right
   ];
 
+ // Create adjacency list where each cell has edges to its neighbors
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const nodeId = `${row},${col}`;
@@ -117,6 +118,7 @@ function sleep(ms) {
 async function visualizeDijkstra() {
   if (!startNode || !goalNode) return;
 
+  // Converts elements to graph node IDs
   const startCoord = {
     row: parseInt(startNode.dataset.row),
     col: parseInt(startNode.dataset.col),
@@ -129,14 +131,14 @@ async function visualizeDijkstra() {
   const startId = `${startCoord.row},${startCoord.col}`;
   const goalId = `${goalCoord.row},${goalCoord.col}`;
 
-  const visited = new Set();
-  const priorityQueue = new MinHeap();
+  const visited = new Set(); // Track visited nodes - O(1) lookups
+  const priorityQueue = new MinHeap(); // MinHeap for efficient minimum extraction - O(log n)
   priorityQueue.insert({ nodeId: startId, distance: 0 });
 
-  const distances = {};
-  const previous = {};
+  const distances = {}; // Track shortest known distance to each node
+  const previous = {}; // Track previous node in shortest path
 
-  // Initialize distances
+  // Initialize distances to infinity
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const nodeId = `${row},${col}`;
@@ -145,7 +147,9 @@ async function visualizeDijkstra() {
   }
   distances[startId] = 0;
 
+  // Main loop
   while (!priorityQueue.isEmpty()) {
+    // Extract node with minimum distance
     const { nodeId, distance } = priorityQueue.extractMin();
     const [row, col] = nodeId.split(",").map(Number);
     const cell = grid[row][col];
@@ -158,7 +162,6 @@ async function visualizeDijkstra() {
 
     if (visited.has(nodeId) || cell.classList.contains("wall")) continue;
 
-    // Add current class to highlight the node being processed
     if (cell !== startNode && cell !== goalNode) {
       cell.classList.add("current");
       await sleep(1010 - parseInt(speedSlider.value) / 2); // Show current node highlight
@@ -169,12 +172,13 @@ async function visualizeDijkstra() {
     cellCounter.textContent = visitedNodesCount;
 
     if (cell !== startNode && cell !== goalNode) {
-      cell.classList.remove("current"); // Remove current class
+      cell.classList.remove("current");
       cell.classList.add("visited");
       cell.textContent = distance;
-      await sleep(1010 - parseInt(speedSlider.value)); // Invert the speed
+      await sleep(1010 - parseInt(speedSlider.value));
     }
 
+    // Relaxation step - check if path through current node is better
     for (const neighborId of graph[nodeId]) {
       if (visited.has(neighborId)) continue;
 
@@ -185,6 +189,7 @@ async function visualizeDijkstra() {
 
       const newDistance = distance + 1; // Edge weight is 1
 
+      // If we found a shorter path, update distance and add to priority queue
       if (newDistance < distances[neighborId]) {
         distances[neighborId] = newDistance;
         previous[neighborId] = nodeId;
@@ -194,10 +199,12 @@ async function visualizeDijkstra() {
   }
 }
 
+// Reconstruct shortest path using the previous pointers
 function showPath(previous, goalId, totalDistance) {
   let currentId = goalId;
   const path = [];
 
+  // Backtrack from goal to start using previous pointers
   while (previous[currentId]) {
     const [row, col] = currentId.split(",").map(Number);
     const cell = grid[row][col];
@@ -205,13 +212,13 @@ function showPath(previous, goalId, totalDistance) {
     currentId = previous[currentId];
   }
 
+  // Reverse to get path from start to goal
   path.reverse();
   path.forEach((cell, index) => {
     cell.classList.add("path");
     cell.textContent = index + 1;
   });
 
-  // Clear the numbers from non-path cells
   grid.forEach((row) =>
     row.forEach((cell) => {
       if (
@@ -250,7 +257,7 @@ function start() {
   resetButton.addEventListener("click", resetGrid);
   toggleButton.addEventListener("click", toggleWallMode);
   speedSlider.addEventListener("input", updateSpeedValue);
-  updateSpeedValue(); // Initialize the speed value display
+  updateSpeedValue();
 
-  document.addEventListener("mouseup", handleMouseUp); // Ensure mouseup is detected globally
+  document.addEventListener("mouseup", handleMouseUp);
 }
