@@ -1,6 +1,6 @@
 # Dijkstra Visualisering
 
-![Dijkstra Visualisering](images/djikstraSC.png)
+![Dijkstra Visualisering](/images/dijkstraSC.png)
 
 
 - **GitHub Link:**[ https://github.com/Jaes98/DSA-R1-exam-Dijkstra](https://github.com/Jaes98/DSA-R1-exam-Dijkstra)
