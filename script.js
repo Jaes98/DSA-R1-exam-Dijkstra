@@ -19,6 +19,7 @@ let grid = [];
 
 let graph = {}; // Adjacency list representation of the grid
 
+let terrainMode = "node";
 let startNode = null;
 let goalNode = null;
 let visitedNodesCount = 0;
@@ -47,23 +48,108 @@ function buildGraph() {
   graph = {};
   const directions = [
     { row: -1, col: 0 }, // up
+    { row: 1, col: 0 },  // down
+    { row: 0, col: -1 }, // left
+    { row: 0, col: 1 },  // right
+  ];
+  
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const nodeId = `${row},${col}`;
+      graph[nodeId] = [];
+      
+      for (const { row: dRow, col: dCol } of directions) {
+        const newRow = row + dRow;
+        const newCol = col + dCol;
+        
+        if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols) {
+          const neighborId = `${newRow},${newCol}`;
+          const neighborCell = grid[newRow][newCol];
+          
+          let weight = 1;
+          if (neighborCell.classList.contains("desert")) {
+            weight = 3;
+          }
+          
+          graph[nodeId].push({ 
+            id: neighborId, 
+            weight: weight 
+          });
+        }
+      }
+    }
+  }
+}
+
+function updateGraphWeights(cell) {
+  const row = parseInt(cell.dataset.row);
+  const col = parseInt(cell.dataset.col);
+  const nodeId = `${row},${col}`;
+
+  // Update this cell's weight in all its neighbors' edges
+  const directions = [
+    { row: -1, col: 0 }, // up
     { row: 1, col: 0 }, // down
     { row: 0, col: -1 }, // left
     { row: 0, col: 1 }, // right
   ];
 
- // Create adjacency list where each cell has edges to its neighbors
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const nodeId = `${row},${col}`;
-      graph[nodeId] = [];
+  for (const { row: dRow, col: dCol } of directions) {
+    const neighborRow = row + dRow;
+    const neighborCol = col + dCol;
 
-      for (const { row: dRow, col: dCol } of directions) {
-        const newRow = row + dRow;
-        const newCol = col + dCol;
-        if (newRow >= 0 && newRow < rows && newCol >= 0 && newCol < cols) {
-          graph[nodeId].push(`${newRow},${newCol}`);
+    if (
+      neighborRow >= 0 &&
+      neighborRow < rows &&
+      neighborCol >= 0 &&
+      neighborCol < cols
+    ) {
+      const neighborId = `${neighborRow},${neighborCol}`;
+
+      // Finds the node in the neighbor's edge list and updates the weight
+      if (graph[neighborId]) {
+        for (let edge of graph[neighborId]) {
+          if (edge.id === nodeId) {
+            // Sets weight based on type of node
+            if (cell.classList.contains("wall")) {
+            } else if (cell.classList.contains("desert")) {
+              edge.weight = 3;
+            } else {
+              edge.weight = 1;
+            }
+            break;
+          }
         }
+      }
+    }
+  }
+
+  // Also update edges from this node to its neighbors
+  if (graph[nodeId]) {
+    graph[nodeId] = [];
+
+    for (const { row: dRow, col: dCol } of directions) {
+      const neighborRow = row + dRow;
+      const neighborCol = col + dCol;
+
+      if (
+        neighborRow >= 0 &&
+        neighborRow < rows &&
+        neighborCol >= 0 &&
+        neighborCol < cols
+      ) {
+        const neighborId = `${neighborRow},${neighborCol}`;
+        const neighborCell = grid[neighborRow][neighborCol];
+
+        let weight = 1;
+        if (neighborCell.classList.contains("desert")) {
+          weight = 3;
+        }
+
+        graph[nodeId].push({
+          id: neighborId,
+          weight: weight,
+        });
       }
     }
   }
@@ -71,16 +157,29 @@ function buildGraph() {
 
 function handleMouseDown(cell) {
   isMouseDown = true;
-  if (wallMode) {
+  if (terrainMode === "wall") {
     cell.classList.toggle("wall");
+    updateGraphWeights(cell);
+  } else if (terrainMode === "desert") {
+    cell.classList.remove("wall");
+    cell.classList.toggle("desert");
+    updateGraphWeights(cell);
   } else {
     selectNode(cell);
   }
 }
 
 function handleMouseMove(cell) {
-  if (isMouseDown && wallMode) {
+  if (!isMouseDown) return;
+
+  if (terrainMode === "wall") {
+    cell.classList.remove("desert");
     cell.classList.add("wall");
+    updateGraphWeights(cell);
+  } else if (terrainMode === "desert") {
+    cell.classList.remove("wall");
+    cell.classList.add("desert");
+    updateGraphWeights(cell);
   }
 }
 
@@ -118,7 +217,6 @@ function sleep(ms) {
 async function visualizeDijkstra() {
   if (!startNode || !goalNode) return;
 
-  // Converts elements to graph node IDs
   const startCoord = {
     row: parseInt(startNode.dataset.row),
     col: parseInt(startNode.dataset.col),
@@ -131,14 +229,13 @@ async function visualizeDijkstra() {
   const startId = `${startCoord.row},${startCoord.col}`;
   const goalId = `${goalCoord.row},${goalCoord.col}`;
 
-  const visited = new Set(); // Track visited nodes - O(1) lookups
-  const priorityQueue = new MinHeap(); // MinHeap for efficient minimum extraction - O(log n)
+  const visited = new Set();
+  const priorityQueue = new MinHeap();
   priorityQueue.insert({ nodeId: startId, distance: 0 });
 
-  const distances = {}; // Track shortest known distance to each node
-  const previous = {}; // Track previous node in shortest path
+  const distances = {};
+  const previous = {};
 
-  // Initialize distances to infinity
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const nodeId = `${row},${col}`;
@@ -147,9 +244,7 @@ async function visualizeDijkstra() {
   }
   distances[startId] = 0;
 
-  // Main loop
   while (!priorityQueue.isEmpty()) {
-    // Extract node with minimum distance
     const { nodeId, distance } = priorityQueue.extractMin();
     const [row, col] = nodeId.split(",").map(Number);
     const cell = grid[row][col];
@@ -164,7 +259,7 @@ async function visualizeDijkstra() {
 
     if (cell !== startNode && cell !== goalNode) {
       cell.classList.add("current");
-      await sleep(1010 - parseInt(speedSlider.value) / 2); // Show current node highlight
+      await sleep(Math.max(1, (1010 - parseInt(speedSlider.value)) / 10));
     }
 
     visited.add(nodeId);
@@ -175,11 +270,13 @@ async function visualizeDijkstra() {
       cell.classList.remove("current");
       cell.classList.add("visited");
       cell.textContent = distance;
-      await sleep(1010 - parseInt(speedSlider.value));
+      await sleep(Math.max(1, (1010 - parseInt(speedSlider.value)) / 5));
     }
 
-    // Relaxation step - check if path through current node is better
-    for (const neighborId of graph[nodeId]) {
+    for (const neighbor of graph[nodeId]) {
+      const neighborId = neighbor.id;
+      const weight = neighbor.weight;
+
       if (visited.has(neighborId)) continue;
 
       const [neighborRow, neighborCol] = neighborId.split(",").map(Number);
@@ -187,9 +284,8 @@ async function visualizeDijkstra() {
 
       if (neighborCell.classList.contains("wall")) continue;
 
-      const newDistance = distance + 1; // Edge weight is 1
+      const newDistance = distance + weight;
 
-      // If we found a shorter path, update distance and add to priority queue
       if (newDistance < distances[neighborId]) {
         distances[neighborId] = newDistance;
         previous[neighborId] = nodeId;
@@ -204,20 +300,33 @@ function showPath(previous, goalId, totalDistance) {
   let currentId = goalId;
   const path = [];
 
-  // Backtrack from goal to start using previous pointers
   while (previous[currentId]) {
     const [row, col] = currentId.split(",").map(Number);
     const cell = grid[row][col];
-    path.push(cell);
+    path.push({ cell, id: currentId });
     currentId = previous[currentId];
   }
 
-  // Reverse to get path from start to goal
   path.reverse();
-  path.forEach((cell, index) => {
+
+  let cumulativeDistance = 0;
+  for (let i = 0; i < path.length; i++) {
+    const { cell, id } = path[i];
     cell.classList.add("path");
-    cell.textContent = index + 1;
-  });
+
+    // Get the previous node and calculate edge weight
+    if (i > 0) {
+      const prevId = path[i - 1].id;
+      for (const neighbor of graph[prevId]) {
+        if (neighbor.id === id) {
+          cumulativeDistance += neighbor.weight;
+          break;
+        }
+      }
+    }
+
+    cell.textContent = cumulativeDistance;
+  }
 
   grid.forEach((row) =>
     row.forEach((cell) => {
@@ -232,11 +341,17 @@ function showPath(previous, goalId, totalDistance) {
   );
 }
 
-function toggleWallMode() {
-  wallMode = !wallMode;
-  toggleButton.textContent = wallMode
-    ? "Toggle Start/Goal Mode"
-    : "Toggle Wall Mode";
+function toggleTerrainMode() {
+  if (terrainMode === "node") {
+    terrainMode = "wall";
+    toggleButton.textContent = "Wall Mode (Switch to Desert) 1/3";
+  } else if (terrainMode === "wall") {
+    terrainMode = "desert";
+    toggleButton.textContent = "Desert Mode (Switch to Node) 2/3";
+  } else {
+    terrainMode = "node";
+    toggleButton.textContent = "Start/Goal Mode (Switch to Wall) 3/3";
+  }
 }
 
 function updateSpeedValue() {
@@ -255,7 +370,7 @@ function start() {
   createGrid();
   startButton.addEventListener("click", visualizeDijkstra);
   resetButton.addEventListener("click", resetGrid);
-  toggleButton.addEventListener("click", toggleWallMode);
+  toggleButton.addEventListener("click", toggleTerrainMode);
   speedSlider.addEventListener("input", updateSpeedValue);
   updateSpeedValue();
 
